@@ -1,59 +1,635 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN" data-theme="amber">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>pixelfx</title>
-<meta name="description" content="Pixel art effects and animations, every one a small piece of code. Play them, recolor them, export sprite sheets.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Sans:wght@400;500&family=Red+Hat+Mono:wght@400;500&display=swap">
+<title>PIXELFX STUDIO // 像素特效工作台</title>
+<meta name="description" content="像素艺术游戏特效实时预览、Agent 动态创作工作区与透明图集导出工具">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <!--BODY-->
-<header class="head">
-  <div class="title">
-    <svg class="mark" viewBox="0 0 7 7" shape-rendering="crispEdges" role="img" aria-label="Patch"><rect x="1" y="1" width="6" height="6" fill="#ffffff"/><rect x="0" y="0" width="3" height="3" fill="#f53cd1"/></svg>
-    <div>
-      <h1>pixelfx.</h1>
-      <p class="sub"><span id="count">0</span> pixel art effects, every one a small piece of code.</p>
+<div class="workbench" id="workbench">
+  <!-- 顶部像素工具栏 -->
+  <header class="wb-header px-panel">
+    <div class="wb-title-group">
+      <div class="space-bar">
+        <div class="brand-tag">
+          <svg class="px-icon" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">
+            <rect x="1" y="1" width="6" height="6" fill="currentColor"/>
+            <rect x="0" y="0" width="3" height="3" fill="var(--pri)"/>
+          </svg>
+          <span>PIXELFX</span>
+        </div>
+
+        <div class="space-switch" role="tablist" aria-label="工作空间切换">
+          <button type="button" class="space-btn active" id="space-ws" data-space="workspace">
+            <span>创作工作区</span>
+            <span class="count-pill" id="ws-count">0</span>
+          </button>
+          <button type="button" class="space-btn" id="space-lib" data-space="library">
+            <span>内置特效库</span>
+            <span class="count-pill" id="lib-total-count">244</span>
+          </button>
+        </div>
+
+        <span class="live-sync-badge" id="sync-badge" title="正在监听 workspace/ 目录变化，外部 Agent 保存后毫秒级自动热重载">
+          <i class="sync-dot"></i><span id="sync-text">SYNC...</span>
+        </span>
+      </div>
+
+      <div class="wb-title-line">
+        <h1 id="fx-name">水攻</h1>
+        <span class="px-badge cat-badge" id="fx-cat-badge">水流涌浪</span>
+        <span class="px-badge source-badge" id="fx-space-tag">RW · 工作区</span>
+        <span class="wb-id" id="fx-id">water/water-eruption</span>
+      </div>
+
+      <nav class="wb-tabs" role="tablist" aria-label="视图切换">
+        <button type="button" class="wb-tab active" data-view="live" role="tab" aria-selected="true">动态预览</button>
+        <button type="button" class="wb-tab" data-view="sheet" role="tab" aria-selected="false">透明图集</button>
+        <button type="button" class="wb-tab" data-view="code" role="tab" aria-selected="false">源码与热改</button>
+      </nav>
     </div>
-  </div>
-  <nav class="links">
-    <a href="https://github.com/patch-gg/pixelfx" target="_blank" rel="noopener">github</a>
-    <a href="https://github.com/patch-gg/pixelfx#the-skill" target="_blank" rel="noopener">claude code skill</a>
-    <a href="https://patch.gg" target="_blank" rel="noopener">patch.gg</a>
-  </nav>
-</header>
-<div class="bar">
-  <div class="bar-in">
-    <div class="chips" id="chips" role="toolbar" aria-label="Categories"></div>
-    <input id="q" type="search" placeholder="search" aria-label="Search effects" autocomplete="off">
+
+    <div class="wb-actions">
+      <div class="quick-filter">
+        <select id="sel-ui-theme" class="ctrl-select theme-select" title="切换工作台像素配色主题" aria-label="界面配色主题">
+          <option value="amber" selected>配色: 黑曜琥珀</option>
+          <option value="aseprite">配色: 经典石板</option>
+          <option value="cyber">配色: 深海青霓</option>
+          <option value="crt">配色: 复古绿屏</option>
+        </select>
+        <select id="sel-category" class="ctrl-select" aria-label="特效分类筛选"></select>
+        <input id="inp-search" class="ctrl-input search-input" type="search" placeholder="搜索特效 / ID..." autocomplete="off">
+      </div>
+
+      <div class="action-bar-row">
+        <!-- 创作工作区操作组 -->
+        <div class="action-group" id="ws-actions">
+          <button type="button" class="primary-btn btn-sm" id="btn-new-fx">+ 新建特效</button>
+          <button type="button" class="ctrl-btn" id="btn-dup-variant">复制变体</button>
+          <button type="button" class="ctrl-btn" id="btn-save-preset">保存预设</button>
+          <button type="button" class="ctrl-btn" id="btn-publish-lib">发布回库</button>
+          <button type="button" class="ctrl-btn danger-hover" id="btn-del-fx">删除</button>
+        </div>
+
+        <!-- 内置特效库操作组 -->
+        <div class="action-group" id="lib-actions" hidden>
+          <button type="button" class="primary-btn btn-sm" id="btn-fork-ws">克隆到工作区</button>
+          <button type="button" class="ctrl-btn" id="btn-open-lib">特效总览</button>
+        </div>
+
+        <button type="button" class="ctrl-btn" id="btn-rename">重命名</button>
+        <button type="button" class="agent-toggle-btn" id="btn-toggle-agent" aria-pressed="true">
+          <svg class="px-icon" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true">
+            <rect x="4" y="0" width="2" height="2" fill="currentColor"/>
+            <rect x="1" y="2" width="8" height="6" fill="currentColor"/>
+            <rect x="2" y="4" width="2" height="2" fill="var(--bg-panel)"/>
+            <rect x="6" y="4" width="2" height="2" fill="var(--bg-panel)"/>
+            <rect x="0" y="4" width="1" height="2" fill="currentColor"/>
+            <rect x="9" y="4" width="1" height="2" fill="currentColor"/>
+          </svg>
+          <span>AI 工作台</span>
+          <span class="task-badge" id="pending-task-badge" hidden>0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主体区：左舞台 + 中参数检查器 + 右 AI 工作台 -->
+  <div class="wb-body with-agent" id="wb-body">
+    <!-- 左栏：预览舞台 + 时间轴 + 底部卡片条 -->
+    <section class="wb-left px-panel">
+      <!-- 视图 1：动态预览 -->
+      <div class="view-pane active" id="pane-live">
+        <div class="stage-viewport px-sunken" id="stage-viewport" title="点击舞台重新触发播放">
+          <span class="corner-mark tl"></span>
+          <span class="corner-mark tr"></span>
+          <span class="corner-mark bl"></span>
+          <span class="corner-mark br"></span>
+          <canvas id="stage-canvas"></canvas>
+          <div class="canvas-bounds-hint" id="bounds-hint" hidden></div>
+          <div class="stage-error-overlay" id="stage-error" hidden></div>
+        </div>
+
+        <div class="timeline-bar">
+          <div class="scrub-wrap">
+            <input type="range" id="scrub-range" min="0" max="10" step="1" value="0" aria-label="动画帧刻度">
+          </div>
+          <div class="playback-row">
+            <div class="playback-left">
+              <button type="button" class="ctrl-btn" id="btn-play">暂停</button>
+              <button type="button" class="ctrl-btn" id="btn-replay">重播</button>
+              <label class="inline-label" for="sel-speed">倍速</label>
+              <select id="sel-speed" class="ctrl-select speed-select">
+                <option value="0.25">0.25x</option>
+                <option value="0.5">0.5x</option>
+                <option value="0.75">0.75x</option>
+                <option value="1" selected>1.0x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2">2.0x</option>
+              </select>
+              <button type="button" class="dot-btn" id="tog-sfx-sync" aria-pressed="false" title="开启后舞台播放时自动同步触发当前选中的特效音效变种">
+                <span>音效同步</span><i class="status-dot"></i>
+              </button>
+            </div>
+            <div class="frame-counter" id="frame-counter">第 1 / 11 帧 · 12 FPS</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 视图 2：透明图集预览 -->
+      <div class="view-pane" id="pane-sheet" hidden>
+        <div class="sub-toolbar">
+          <div class="sub-toolbar-left">
+            <span class="sheet-summary" id="sheet-summary">共 0 帧</span>
+          </div>
+          <div class="sub-toolbar-right">
+            <label class="inline-label" for="sel-sheet-zoom">缩放</label>
+            <select id="sel-sheet-zoom" class="ctrl-select">
+              <option value="fit" selected>自适应</option>
+              <option value="1">1x</option>
+              <option value="2">2x</option>
+              <option value="3">3x</option>
+              <option value="4">4x</option>
+            </select>
+            <button type="button" class="dot-btn" id="tog-sheet-grid" aria-pressed="true">
+              <span>分帧网格</span><i class="status-dot"></i>
+            </button>
+            <button type="button" class="dot-btn" id="tog-sheet-actor" aria-pressed="false">
+              <span>含角色</span><i class="status-dot"></i>
+            </button>
+            <button type="button" class="ctrl-btn" id="btn-dl-png">下载 PNG</button>
+            <button type="button" class="ctrl-btn" id="btn-dl-json">下载 JSON</button>
+          </div>
+        </div>
+        <div class="sheet-scroll px-sunken" id="sheet-scroll">
+          <div class="sheet-canvas-wrap" id="sheet-canvas-wrap">
+            <canvas id="sheet-canvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 视图 3：源码实时编辑与调用示例 -->
+      <div class="view-pane" id="pane-code" hidden>
+        <div class="sub-toolbar">
+          <div class="code-subtabs">
+            <button type="button" class="wb-tab active" data-code="source">特效源码</button>
+            <button type="button" class="wb-tab" data-code="sfx">配音脚本 (.js)</button>
+            <button type="button" class="wb-tab" data-code="usage">调用示例</button>
+            <button type="button" class="wb-tab" data-code="json">图集 JSON</button>
+          </div>
+          <div class="sub-toolbar-right">
+            <span class="code-path" id="code-path">workspace/fx/water/water-eruption.js</span>
+            <select id="sel-history" class="ctrl-select" title="回退历史版本" hidden>
+              <option value="">历史快照...</option>
+            </select>
+            <button type="button" class="ctrl-btn" id="btn-check-code" hidden>质量诊断</button>
+            <button type="button" class="primary-btn btn-sm" id="btn-save-code" hidden>保存热重载 (Ctrl+S)</button>
+            <button type="button" class="primary-btn btn-sm" id="btn-fork-to-edit" hidden>克隆到工作区编辑</button>
+            <button type="button" class="ctrl-btn" id="btn-copy-code">复制</button>
+          </div>
+        </div>
+
+        <div class="check-banner" id="check-banner" hidden></div>
+        <textarea class="code-editor px-sunken" id="code-editor" spellcheck="false" hidden></textarea>
+        <pre class="code-box px-sunken" id="code-box"><code id="code-content"></code></pre>
+      </div>
+
+      <!-- 底部特效缩略图切换栏 -->
+      <div class="carousel-bar">
+        <button type="button" class="carousel-step ctrl-btn" id="btn-prev">&lt; 上一个</button>
+        <div class="carousel-strip" id="carousel-strip" role="listbox" aria-label="特效列表切换"></div>
+        <button type="button" class="carousel-step ctrl-btn" id="btn-next">下一个 &gt;</button>
+      </div>
+    </section>
+
+    <!-- 中栏：外观与演示检查器 + 导出 + 专用参数 -->
+    <aside class="wb-inspector px-panel">
+      <div class="insp-section">
+        <div class="sec-title-bar">
+          <h2 class="insp-heading">外观与演示</h2>
+        </div>
+        <p class="insp-desc" id="insp-desc"></p>
+        <div class="insp-meta px-sunken" id="insp-meta">
+          <div id="meta-row-1">原始: --</div>
+          <div id="meta-row-2">--</div>
+          <div id="meta-row-3">--</div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-row">
+            <label class="row-label" for="sel-bg">预览背景</label>
+            <select id="sel-bg" class="ctrl-select row-fill"></select>
+          </div>
+
+          <div class="form-row">
+            <label class="row-label" for="sel-pal">调色板</label>
+            <select id="sel-pal" class="ctrl-select row-fill"></select>
+          </div>
+
+          <div class="swatch-bar" id="swatch-bar" title="点击任意色块可自定义微调颜色"></div>
+
+          <div class="form-row compact-row">
+            <label class="inline-label" for="inp-seed">种子</label>
+            <input type="number" id="inp-seed" class="ctrl-input num-seed" step="1" value="57">
+            <button type="button" class="ctrl-btn" id="btn-rand-seed">随机</button>
+            <label class="inline-label ml-auto" for="inp-fps">帧率</label>
+            <input type="number" id="inp-fps" class="ctrl-input num-fps" min="1" max="120" step="0.5" value="12">
+            <span class="unit-text">FPS</span>
+          </div>
+
+          <div class="form-row compact-row">
+            <label class="row-label" for="inp-duration">动画时长</label>
+            <input type="number" id="inp-duration" class="ctrl-input row-fill" min="0.05" max="60" step="0.05" value="0.83">
+            <span class="unit-text">秒</span>
+            <span class="scale-readout" id="dur-scale">1.00x</span>
+          </div>
+
+          <div class="form-row compact-row">
+            <label class="row-label" for="inp-w">画布尺寸</label>
+            <input type="number" id="inp-w" class="ctrl-input num-dim" min="16" max="1024" step="1" value="128">
+            <span class="unit-text">x</span>
+            <input type="number" id="inp-h" class="ctrl-input num-dim" min="16" max="1024" step="1" value="160">
+            <span class="unit-text">PX</span>
+          </div>
+
+          <div class="form-row switches-row">
+            <button type="button" class="pill-switch" id="tog-aspect" aria-pressed="true">
+              <span>锁定宽高比</span>
+              <span class="sw-track"><i class="sw-knob"></i></span>
+            </button>
+            <button type="button" class="pill-switch" id="tog-scale-canvas" aria-pressed="true">
+              <span>动画随画布缩放</span>
+              <span class="sw-track"><i class="sw-knob"></i></span>
+            </button>
+          </div>
+
+          <div class="form-row compact-row">
+            <button type="button" class="dot-btn" id="tog-flip" aria-pressed="false">
+              <span>水平镜像</span><i class="status-dot"></i>
+            </button>
+            <label class="inline-label" for="sel-actor">预览角色</label>
+            <select id="sel-actor" class="ctrl-select row-fill">
+              <option value="hide">隐藏角色</option>
+              <option value="full">显示角色</option>
+              <option value="body">仅显示角色</option>
+              <option value="target">仅显示木桩</option>
+            </select>
+            <button type="button" class="ctrl-btn" id="btn-reset">重置</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insp-divider"></div>
+
+      <!-- 专属特效配音与当前特效音效变种面板 (AI Agent 独立编写 sfx/<id>.js -> 多变种 .ogg) -->
+      <div class="insp-section">
+        <div class="sec-title-bar sfx-title-bar">
+          <h2 class="insp-heading">专属特效配音 (.ogg)</h2>
+          <span class="modal-id" id="sfx-meta-lbl">AI 专属配音</span>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-row compact-row sfx-refs-bar">
+            <button type="button" class="dot-btn btn-xs" id="tog-sfx-refs" aria-pressed="false" title="选择是否在 AI 生成配音时启用音效参考库（未启用时采用纯 JS 程序化合成）">
+              <span id="tog-sfx-refs-lbl">启用音效参考</span><i class="status-dot"></i>
+            </button>
+            <button type="button" class="ctrl-btn btn-xs ml-auto" id="btn-sfx-refs-mgr" title="动态挂载本地音效目录或导入音频/ZIP 参考包（与技能解耦，按需启用）">
+              参考库管理 (0)
+            </button>
+          </div>
+
+          <div class="form-row compact-row">
+            <label class="row-label" for="sel-sfx-variant">音效变种</label>
+            <select id="sel-sfx-variant" class="ctrl-select row-fill" aria-label="当前特效音效变种选择">
+              <option value="">加载中...</option>
+            </select>
+            <button type="button" class="ctrl-btn btn-xs" id="btn-sfx-script" title="查看或热编译当前特效的 JS 配音脚本">脚本</button>
+          </div>
+
+          <div class="sfx-variant-desc px-sunken">
+            <div id="sfx-variant-desc">正在读取当前特效的专属音效变种...</div>
+            <div class="sfx-base-tags" id="sfx-base-tags" hidden></div>
+          </div>
+
+          <div class="sfx-wave-box px-sunken" id="sfx-wave-box" title="当前变种波形与关键帧对位红线（点击立即重播试听）">
+            <canvas id="sfx-wave-canvas" width="320" height="36"></canvas>
+          </div>
+
+          <div class="form-row compact-row">
+            <button type="button" class="ctrl-btn" id="btn-sfx-play">试听</button>
+            <button type="button" class="ctrl-btn row-fill sfx-ai-btn" id="btn-sfx-ai-gen" title="由 AI Agent 针对当前特效视觉节奏编写专属配音脚本或追加新变种">✦ AI 生成/加变种</button>
+            <button type="button" class="primary-btn btn-sm" id="btn-sfx-export">导出 .ogg</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insp-divider"></div>
+
+      <div class="insp-section">
+        <div class="sec-title-bar">
+          <h2 class="insp-heading">素材导出</h2>
+        </div>
+        <div class="export-row">
+          <select id="sel-export-fmt" class="ctrl-select row-fill" aria-label="导出格式">
+            <option value="sheet-both" selected>透明图集 (游戏素材)</option>
+            <option value="bundle-all-zip">全套资产包 (PNG+JSON+OGG)</option>
+            <option value="sfx-ogg">仅特效配音 (.ogg)</option>
+            <option value="sheet-zip">透明图集打包 (ZIP)</option>
+            <option value="frames-zip">单帧透明序列 (ZIP)</option>
+            <option value="gif">动态 GIF 预览图</option>
+            <option value="sheet-png">仅透明图集 (PNG)</option>
+            <option value="contact-png">分帧预览联系表 (PNG)</option>
+          </select>
+          <button type="button" class="primary-btn" id="btn-export">导出透明图集...</button>
+        </div>
+        <p class="export-hint" id="export-hint">透明 PNG + JSON，保留完整动画帧。</p>
+      </div>
+
+      <details class="extra-accordion" id="extra-accordion">
+        <summary>
+          <span>编辑特效专用参数</span>
+          <i class="status-dot" id="extra-indicator"></i>
+        </summary>
+        <div class="extra-body" id="extra-body"></div>
+      </details>
+    </aside>
+
+    <!-- 右栏：AI 创作工作台（清晰区分「外部 Agent 联动」与「内置 API 直连」） -->
+    <aside class="agent-drawer px-panel" id="agent-drawer">
+      <div class="agent-head">
+        <div>
+          <h3>AI 创作工作台</h3>
+          <div class="agent-sub" id="agent-focus-label">TARGET: water/water-eruption</div>
+        </div>
+        <button type="button" class="ctrl-btn btn-xs" id="btn-agent-close">收起</button>
+      </div>
+
+      <!-- 双模式切换标签 -->
+      <div class="agent-mode-tabs">
+        <button type="button" class="wb-tab active" data-amode="ext" id="tab-amode-ext">外部 Agent 目录 (.agents)</button>
+        <button type="button" class="wb-tab" data-amode="api" id="tab-amode-api">内置 API 直连</button>
+      </div>
+
+      <!-- 子面板 A：AI Harness 目录挂载与 .agents 技能实时联动 -->
+      <div class="agent-mode-pane" id="amode-ext">
+        <div class="px-guide-card px-sunken">
+          <div class="guide-head">
+            <span>工作区挂载目录 (交给 AI Harness)</span>
+            <label class="follow-lbl" title="允许外部 Agent 实时驱动整个 UI 的选中特效、视图标签、背景与参数滑块">
+              <input type="checkbox" id="chk-auto-follow" checked> 全局 UI 联动
+            </label>
+          </div>
+          <div class="cli-bar">
+            <code id="ws-dir-path">./workspace</code>
+            <button type="button" class="primary-btn btn-xs" id="btn-copy-ws-dir">复制目录</button>
+          </div>
+          <p class="guide-tip">
+            在任意 AI Harness（Antigravity / Claude Code / Codex / OpenCode / Cursor）中打开此目录，即可自动加载下方 <code>.agents/</code> 技能包；目录内特效源码、参数预设与 UI 控制状态均与当前界面实时双向同步。
+          </p>
+        </div>
+
+        <!-- .agents 技能与规则目录树（只读保护，点击查看） -->
+        <div class="task-queue-head">
+          <span>.agents 技能与规则目录（只读锁定 · 点击查看）</span>
+          <button type="button" class="ctrl-btn btn-xs" id="btn-refresh-harness">刷新</button>
+        </div>
+        <div class="agents-tree px-sunken" id="agents-file-list"></div>
+
+        <!-- 目录实时事件流（外部 Agent 修改文件或推送状态时实时展示） -->
+        <div class="task-queue-head">
+          <span>工作区实时动态反馈</span>
+          <span class="modal-id" id="ui-ctx-indicator">state/ui-context.json 已同步</span>
+        </div>
+        <div class="task-list px-sunken" id="harness-feed-list"></div>
+      </div>
+
+      <!-- 子面板 B：网页内置大模型 API 直连（支持多轮对话与原子级 Undo 回撤） -->
+      <div class="agent-mode-pane" id="amode-api" hidden>
+        <div class="api-bar">
+          <div class="api-bar-left">
+            <button type="button" class="ctrl-btn btn-xs" id="btn-agent-undo" disabled title="撤回最近一步 AI 修改（同步还原工作区特效文件、参数与对话记录）">
+              ↩ 撤回
+            </button>
+            <button type="button" class="ctrl-btn btn-xs" id="btn-agent-clear" title="清空当前对话记录">清空对话</button>
+          </div>
+          <button type="button" class="ctrl-btn btn-xs" id="btn-agent-cfg">配置 API Key</button>
+        </div>
+
+        <div class="agent-quick-chips">
+          <button type="button" class="ctrl-btn q-chip" data-prompt="基于当前特效衍生一个视觉风格更华丽的新变体方案（create_code），增加层次细节与发光表现">+ 衍生新变体</button>
+          <button type="button" class="ctrl-btn q-chip" data-prompt="为当前特效编写专属 JS 配音脚本（action: write_sfx），严格对位其动画爆发关键帧，生成 3 个不同听感层次的音效变种">♪ 生成配音变种</button>
+          <button type="button" class="ctrl-btn q-chip" data-prompt="修改代码增强爆发打击感：加入前2帧刺眼白闪核心、快进慢出速度曲线与飞溅粒子">! 增强打击感</button>
+          <button type="button" class="ctrl-btn q-chip" data-prompt="为当前特效编写角色蓄力、出手顿帧与受击震屏反馈（export const act）">@ 编排角色动作</button>
+        </div>
+
+        <div class="agent-msgs px-sunken" id="agent-msgs">
+          <div class="agent-msg assistant">
+            配置 API Key 后，可在此直接在网页内生成新像素特效或动态调参（自带像素自检与报错修复闭环）。若使用外部 IDE Agent，请切回「外部 Agent 联动」标签页。
+          </div>
+        </div>
+
+        <form class="agent-input-bar" id="form-agent-chat">
+          <textarea id="inp-agent-prompt" class="ctrl-input px-sunken" rows="2" placeholder="输入特效生成或修改指令..."></textarea>
+          <button type="submit" class="primary-btn" id="btn-agent-send">立即生成 / 调优</button>
+        </form>
+      </div>
+    </aside>
   </div>
 </div>
-<main id="grid"></main>
-<p class="empty" id="none" hidden>Nothing matches that. Try fire, slash or loop.</p>
-<dialog class="detail" id="detail" aria-labelledby="d-name">
-  <div class="sheet">
-    <div>
-      <div class="big"><canvas id="big"></canvas><button class="close" id="d-close" type="button">close</button></div>
+
+<!-- 新建工作区特效弹窗 -->
+<dialog class="modal-dlg px-panel" id="dlg-new-fx">
+  <form method="dialog" class="rename-card" id="form-new-fx">
+    <div class="modal-head">
+      <h3>新建工作区特效</h3>
+      <button type="button" class="ctrl-btn btn-xs" id="btn-new-close">X</button>
     </div>
-    <div class="info">
-      <h2 id="d-name"></h2>
-      <div class="id" id="d-id"></div>
-      <p id="d-desc"></p>
-      <dl class="facts" id="d-facts"></dl>
-      <div class="controls">
-        <div class="row"><label>play</label><button class="btn" id="d-play" type="button">pause</button><button class="btn" id="d-again" type="button">again</button><span id="d-speed" class="row"></span></div>
-        <div class="row"><label>backdrop</label><span id="d-bg" class="row"></span></div>
-        <div class="row"><label>palette</label><select class="btn" id="d-pal" aria-label="Palette"></select><button class="btn" id="d-seed" type="button">new seed</button></div>
-        <div class="row"><label>show</label><button class="btn" id="d-flip" type="button">mirror</button><button class="btn" id="d-actor" type="button">character</button><button class="btn" id="d-make" type="button">sprite sheet</button></div>
+    <label class="modal-field">
+      <span>所属分类</span>
+      <select id="sel-new-cat" class="ctrl-select"></select>
+    </label>
+    <label class="modal-field">
+      <span>英文标识名 (kebab-case)</span>
+      <input type="text" id="inp-new-slug" class="ctrl-input px-sunken" placeholder="例如: ice-burst 或 thunder-slash" required>
+    </label>
+    <label class="modal-field">
+      <span>中文名称</span>
+      <input type="text" id="inp-new-zh" class="ctrl-input px-sunken" placeholder="例如: 冰魄爆裂" required>
+    </label>
+    <label class="modal-field">
+      <span>初始模板</span>
+      <select id="sel-new-tpl" class="ctrl-select">
+        <option value="oneshot">一次性爆发模板 (粒子 + 光效模拟)</option>
+        <option value="loop">无缝循环模板 (相位纯函数)</option>
+        <option value="clone">克隆当前正在预览的特效源码</option>
+      </select>
+    </label>
+    <div class="modal-foot">
+      <span></span>
+      <div class="modal-foot-right">
+        <button type="button" class="ctrl-btn" id="btn-new-cancel">取消</button>
+        <button type="submit" class="primary-btn">创建并打开</button>
       </div>
-      <div class="code-head"><span>use it</span><span><a id="d-src" target="_blank" rel="noopener">source</a> · <button class="btn" id="d-copy" type="button">copy</button></span></div>
-      <pre id="d-code"></pre>
     </div>
-    <div class="sheetout" id="d-sheet"></div>
+  </form>
+</dialog>
+
+<!-- 内置 AI 模型配置弹窗 -->
+<dialog class="modal-dlg px-panel" id="dlg-agent-cfg">
+  <form method="dialog" class="rename-card" id="form-agent-cfg">
+    <div class="modal-head">
+      <h3>内置 AI 模型接口配置</h3>
+      <button type="button" class="ctrl-btn btn-xs" id="btn-cfg-close">X</button>
+    </div>
+    <label class="modal-field">
+      <span>接口协议类型</span>
+      <select id="sel-cfg-provider" class="ctrl-select">
+        <option value="openai">OpenAI 兼容接口 (DeepSeek / 通义 / GPT / Ollama)</option>
+        <option value="gemini">Google Gemini API</option>
+        <option value="anthropic">Anthropic Claude API</option>
+      </select>
+    </label>
+    <label class="modal-field">
+      <span>API Base URL（内网网关 IP 自动脱敏展示，留空或保留 *** 不变）</span>
+      <input type="text" id="inp-cfg-url" class="ctrl-input px-sunken" placeholder="https://api.openai.com/v1" autocomplete="off">
+    </label>
+    <label class="modal-field">
+      <span>模型名称 (Model)</span>
+      <input type="text" id="inp-cfg-model" class="ctrl-input px-sunken" placeholder="deepseek-chat / gpt-4o / gemini-2.5-pro" autocomplete="off">
+    </label>
+    <label class="modal-field">
+      <span>API Key（AES-256-GCM 加密保存在仓外 ~/.pixelfx/，绝不写入项目与 Git）</span>
+      <input type="password" id="inp-cfg-key" class="ctrl-input px-sunken" placeholder="sk-..." autocomplete="new-password" data-lpignore="true">
+    </label>
+    <div class="modal-foot">
+      <span class="modal-id" id="cfg-key-status"></span>
+      <div class="modal-foot-right">
+        <button type="button" class="ctrl-btn danger-hover" id="btn-cfg-clear" hidden>清除密钥</button>
+        <button type="button" class="ctrl-btn" id="btn-cfg-cancel">取消</button>
+        <button type="submit" class="primary-btn">保存配置</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<!-- 重命名弹窗 -->
+<dialog class="modal-dlg px-panel" id="dlg-rename">
+  <form method="dialog" class="rename-card" id="form-rename">
+    <div class="modal-head">
+      <h3>重命名特效</h3>
+      <button type="button" class="ctrl-btn btn-xs" id="btn-rename-close">X</button>
+    </div>
+    <div class="modal-id" id="ren-id"></div>
+    <label class="modal-field">
+      <span>显示名称</span>
+      <input type="text" id="inp-ren-name" class="ctrl-input px-sunken" maxlength="40" required>
+    </label>
+    <label class="modal-field">
+      <span>表现描述</span>
+      <textarea id="inp-ren-desc" class="ctrl-input px-sunken" rows="3" maxlength="200"></textarea>
+    </label>
+    <div class="modal-foot">
+      <button type="button" class="ctrl-btn" id="btn-ren-default">恢复默认</button>
+      <div class="modal-foot-right">
+        <button type="button" class="ctrl-btn" id="btn-ren-cancel">取消</button>
+        <button type="submit" class="primary-btn">保存修改</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<!-- 全部内置特效库网格总览弹窗 -->
+<dialog class="modal-dlg lib-dlg px-panel" id="dlg-library">
+  <div class="lib-shell">
+    <header class="lib-head">
+      <div>
+        <h2>内置特效库总览 <span class="lib-count" id="lib-count">244</span></h2>
+        <p class="lib-sub">点击卡片预览，或点击卡片右下角「克隆」一键拷入创作工作区改造</p>
+      </div>
+      <div class="lib-head-right">
+        <input type="search" id="inp-lib-search" class="ctrl-input px-sunken" placeholder="搜索中文名 / 英文 / ID / 标签...">
+        <button type="button" class="ctrl-btn" id="btn-lib-close">关闭 X</button>
+      </div>
+    </header>
+    <div class="lib-chips" id="lib-chips"></div>
+    <div class="lib-grid" id="lib-grid"></div>
+  </div>
+</dialog>
+
+<div class="toast px-panel" id="toast" hidden></div>
+
+<!-- .agents 技能/规则文件只读查看弹窗 -->
+<dialog class="modal-dlg lib-dlg px-panel" id="dlg-agents-doc">
+  <div class="lib-shell">
+    <header class="lib-head">
+      <div>
+        <h2 id="agents-doc-title">.agents/skills/pixelfx-studio/SKILL.md</h2>
+        <p class="lib-sub">只读锁定保护：基础设施与技能规范禁止被 Agent 套改，确保每个特效独立编排视觉与配音</p>
+      </div>
+      <div class="lib-head-right">
+        <button type="button" class="ctrl-btn" id="btn-close-agents-doc">关闭 X</button>
+      </div>
+    </header>
+    <textarea class="code-editor px-sunken" id="inp-agents-doc" spellcheck="false" readonly></textarea>
+  </div>
+</dialog>
+
+<!-- 音效参考库动态管理弹窗（不内置音频包，支持按需挂载与开关） -->
+<dialog class="modal-dlg px-panel" id="dlg-sfx-refs">
+  <div class="refs-dlg-card">
+    <div class="modal-head">
+      <h3>音效参考库动态管理</h3>
+      <button type="button" class="ctrl-btn btn-xs" id="btn-refs-close">X</button>
+    </div>
+
+    <div class="refs-global-box px-sunken">
+      <div class="refs-global-top">
+        <strong>参考库参与 AI 配音合成</strong>
+        <button type="button" class="pill-switch refs-pill" id="dlg-tog-refs-global" aria-pressed="false">
+          <span id="dlg-refs-global-txt">未启用 (纯程序化合成)</span>
+          <span class="sw-track"><i class="sw-knob"></i></span>
+        </button>
+      </div>
+      <p class="guide-tip">
+        参考库不内置且不硬编码在 <code>.agents</code> 技能中：启用后 AI 可检索下方已勾选的音频包进行分层混音 + DSP 合成；关闭时则完全通过纯 JS 算法独立合成。
+      </p>
+    </div>
+
+    <div class="refs-add-grid">
+      <div class="refs-add-card px-sunken">
+        <div class="refs-card-title">方式 A · 挂载本地音频文件夹（只读原位索引 .ogg / .wav / .mp3）</div>
+        <div class="form-row compact-row">
+          <input type="text" id="inp-ref-dir-name" class="ctrl-input" style="width:128px" placeholder="库名称 (可选)">
+          <input type="text" id="inp-ref-dir-path" class="ctrl-input row-fill" placeholder="输入本地音频文件夹路径...">
+          <button type="button" class="primary-btn btn-sm" id="btn-add-ref-dir">挂载目录</button>
+        </div>
+      </div>
+
+      <div class="refs-add-card px-sunken">
+        <div class="refs-card-title">方式 B · 导入 ZIP 压缩包或音频文件（自动解压至 workspace/sfx-refs/）</div>
+        <div class="form-row compact-row">
+          <input type="text" id="inp-ref-upload-name" class="ctrl-input row-fill" placeholder="导入包显示名称 (可选，如 8-Bit Retro Pack)">
+          <input type="file" id="inp-ref-files" accept=".zip,.ogg,.wav,.mp3" multiple hidden>
+          <button type="button" class="ctrl-btn" id="btn-upload-ref-files">选择 ZIP / 音频导入...</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-queue-head">
+      <span>已挂载的音效参考库列表（可单独勾选是否启用）</span>
+      <span class="modal-id" id="refs-summary-stat">0 个库 · 0 条可用音频</span>
+    </div>
+    <div class="refs-lib-list px-sunken" id="sfx-refs-list"></div>
+
+    <div class="modal-foot">
+      <span class="modal-id">配置文件: workspace/sfx-refs.json (已加入 .gitignore)</span>
+      <div class="modal-foot-right">
+        <button type="button" class="ctrl-btn" id="btn-refs-done">完成</button>
+      </div>
+    </div>
   </div>
 </dialog>
 <!--/BODY-->

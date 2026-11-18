@@ -1,7 +1,7 @@
 {
   "name": "pixelfx",
-  "version": "0.3.1",
-  "description": "Code-driven pixel art effects and animations, and a Claude Code skill to make your own.",
+  "version": "0.4.0",
+  "description": "Code-driven pixel art VFX workbench, AI Harness workspace (.agents), and pure-JS SFX synthesis studio with optional dynamic reference libraries.",
   "type": "module",
   "license": "MIT",
   "engines": {
@@ -13,11 +13,16 @@
     "./core/*": "./src/core/*.js"
   },
   "scripts": {
+    "start": "node tools/serve.mjs",
+    "gallery": "node tools/serve.mjs",
     "render": "node tools/render.mjs",
-    "check": "node tools/check.mjs",
-    "gallery": "node tools/serve.mjs"
+    "check": "node tools/check.mjs"
   },
   "devDependencies": {
-    "esbuild": "^0.25.10"
+    "@wasm-audio-decoders/ogg-vorbis": "^0.1.20",
+    "esbuild": "^0.25.10",
+    "fflate": "^0.8.2",
+    "mpg123-decoder": "^0.4.12",
+    "wasm-media-encoders": "^0.7.0"
   }
 }

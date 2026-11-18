@@ -1,31 +1,131 @@
+# PixelFX Studio — 像素艺术特效创作工作台 & AI 配音工作区
+
 <p align="center">
-  <img src="docs/readme/montage.gif" width="800" alt="A grid of pixel art effects playing at once: a campfire, a burning skull, a waterfall, a plasma ball, a portal, a tornado and more.">
+  <img src="docs/screenshots/workbench.png" width="980" alt="PixelFX Studio 像素特效实时预览舞台、专属多变种配音检查器与 AI Harness 创作工作台">
 </p>
 
-# pixelfx.
+**PixelFX Studio** 是一个基于 **100% 纯 JavaScript (Node.js ES Module)** 构建的代码驱动像素艺术视觉特效（VFX）与专属配音（SFX）一体化创作工作台。
 
-**<!-- count -->244<!-- /count --> pixel art effects and animations, every one a small piece of code.** Fire,
-explosions, magic, weather, UI, pickups, critters and more. Play them live, recolor and mirror them, drop them into
-a browser game, or export sprite sheets for any engine. Plus a Claude Code skill that makes new ones the way a
-picky pixel artist would: draft, render, look, refine.
+项目内置 **<!-- count -->244<!-- /count -->** 个零图片依赖的程序化像素特效（双缓冲像素与加法发光层 + 角色蓄力/顿帧受击动作编排），并提供可实时热同步的 **AI 创作工作区 (`workspace/`)**、**外部 AI Harness `.agents` 技能联动**、**内置大模型多轮对话与原子级 Undo 回撤**，以及支持**动态挂载与按需启用的音效参考库**。
 
-Every effect that involves a character is **acted out**: he winds up, lets go, freezes on contact and recovers, and a
-target takes the hit. Twelve whole moves chain the effects into attacks from wind-up to recovery.
+---
 
-It's also a block on Patch: [play pixelfx on Patch](https://patch.gg/patch/pixel-effects), pick an effect and a
-palette, and start a browser game from it.
+## 核心特性
 
-**[open the gallery](https://patch-gg.github.io/pixelfx/)** · [catalog](docs/CATALOG.md) · [acting](#acting) ·
-[the skill](#the-skill) · [make your own](#make-your-own) · [publish it on patch](#publish-it-on-patch) ·
-[how it works](#how-it-works)
+### 1. 双空间像素特效工作台（创作工作区 + 内置特效库）
+- **实时帧级舞台与多主题像素 UI**：采用硬朗像素倒角边框与现代清晰字体，内置黑曜琥珀、经典石板、深海青霓、复古绿屏 4 套配色主题；支持逐帧拖拽、倍速预览、水平镜像、俯视石砖/棋盘格等背景切换与角色受击顿帧演示。
+- **零重绘色板重映射与参数热调**：无需修改源码即可实时替换五阶/八阶色板、调整帧率、动画时长、画布尺寸与特效专属参数，并一键保存为工作区预设或发布回内置库。
+- **像素质量自检器 (`check`)**：离屏步进渲染全帧，自动检测未设种子的随机数、越界溢出像素、一次性特效尾帧残留与单帧耗时。
+- **全格式游戏素材导出**：一键导出透明图集（PNG + Aseprite 兼容 JSON，可直接导入 Godot / Unity / Phaser）、单帧序列 ZIP、动态 GIF，或包含图集与 `.ogg` 配音的全套资产包 ZIP。
 
-The method is [Hugo Duprez](https://x.com/HugoDuprez)'s, from [How to make (good) pixel art effects with
-Claude](https://www.spritefusion.com/blog/how-to-make-good-pixel-art-effects-with-claude): code is clay, trust your
-eyes, feed your references. His [open-source effects](https://www.spritefusion.com/pixel-art-vfx) at Sprite Fusion
-set the bar, and `src/core/sim.js` and the effects that say so at the top adapt his code. This repo is our take on
-the idea at library scale, with a skill to keep going.
+### 2. AI 专属特效配音与动态可选参考库
+- **一特效一配音集，多变种即时切换**：每个特效对应独立的 ES Module 配音脚本 `workspace/sfx/<category>/<name>.js`，编译输出当前特效的多个听感变种（`.ogg`），支持舞台关键帧同步触发试听与单独导出。
+- **动态管理、按需启用的音效参考库（不内置音频包，与技能解耦）**：
+  - 仓库**不内置绑定任何固定参考音频包**，也不在 `.agents` 技能中硬编码依赖。
+  - 用户可在「专属特效配音 → 参考库管理」中随时**挂载本地音频目录**（原位只读扫描 `.ogg / .wav / .mp3`）或**导入 `.zip` / 音频文件**，并可全局或分库勾选「启用音效参考」。
+  - **自适应双模式**：当开启参考库时，AI 自动检索已启用参考采样，通过 `refLayer()` 切片、移调、分频段提取并与 DSP 合成层混音；当关闭参考库时，AI 直接使用 `sfx-core` 纯 JS 声学原语（确定性噪声 `sfxRng`、零相位巴特沃斯滤波 `band/lowpass/highpass`、多模态物理谐振腔 `resonate`、奇次谐波触点 `pixelTick`）针对视觉关键帧独立程序化合成。
+- **只读基础设施保护（拒绝套改固定模板）**：系统不预填千篇一律的白噪声模板，`.agents/` 技能规范、核心引擎与用户参考库均设有只读保护，确保每个特效独立成篇。
 
-## what's in it.
+### 3. 双模式 AI 协同工作流
+- **外部 AI Harness 目录联动 (`./workspace` + `.agents/`)**：将 `./workspace` 交给 Claude Code、Cursor、Codex、OpenCode 或 Antigravity 等任意 AI Harness，即可自动加载 `.agents/skills/` 下的视觉与配音技能；基于 `fs.watch + SSE`，源码保存、配音编译与参数调优均在 100ms 内实时反馈到网页舞台。
+- **网页内置大模型 API 直连（支持一键 Undo 回撤与仓外密钥加密脱敏）**：支持配置 OpenAI 兼容接口（DeepSeek / Qwen / GPT / Ollama 等）、Google Gemini 与 Anthropic Claude API（密钥经 AES-256-GCM 加密保存在仓库外部的 `~/.pixelfx/agent-config.json` 或直接通过 `PIXELFX_API_KEY` 环境变量注入，前端接口全程脱敏且绝不写入项目目录与 Git 记录）；内置报错自动修复闭环与**多轮检查点栈 (`↩ 撤回`)**，可一键原子级还原特效代码、配音脚本、`.ogg` 变种及界面滑块参数。
+
+---
+
+## 快速开始
+
+**环境要求**：Node.js `>= 18`（全栈纯 JavaScript，无需安装 Python 或 FFmpeg）。
+
+```bash
+# 1. 安装依赖
+npm install
+
+# 2. 启动本地创作工作台与实时热同步服务 (默认端口 8080)
+npm start
+```
+
+浏览器打开 **`http://localhost:8080/gallery/`** 即可进入工作台。
+
+---
+
+## 目录结构
+
+```text
+pixelfx/
+├── src/
+│   ├── core/                 # 双缓冲像素绘制器 (color + light)、粒子模拟与 3D 像素骨骼角色引擎
+│   └── fx/                   # 21 大类、244 个内置代码驱动像素特效 (只读参考库)
+├── gallery/                  # Web 像素工作台前端 (实时舞台、参数检查器、参考库管理、导出工具)
+├── tools/
+│   ├── serve.mjs             # 本地 HTTP + SSE 实时热重载与 API 服务
+│   ├── render.mjs            # 命令行渲染 PNG 图集 / GIF / 预览联系表
+│   ├── check.mjs             # 像素特效确定性与边界规范检查器
+│   └── lib/
+│       ├── workspace-engine.mjs  # 创作工作区管理、历史快照、Undo 检查点栈与内置 AI 驱动
+│       └── sfx-core.mjs          # 纯 JS 声学合成 DSP、WASM Ogg 编解码与动态音效参考库引擎
+└── workspace/                # 可挂载给外部 AI Harness 的实时创作工作区
+    ├── .agents/              # 只读技能包 (pixelfx-studio 视觉技能 + pixelfx-sfx 配音技能)
+    ├── fx/                   # 工作区自定义/改造的视觉特效源码 (.js)
+    └── sfx/                  # 工作区特效专属配音脚本 (.js) 与编译生成的变种音频 (.ogg)
+```
+
+---
+
+## 常用命令行工具
+
+在外部终端或 AI Harness 中可通过 `studio.mjs` 与前端界面实时双向交互：
+
+```bash
+# 查看当前前端焦点特效、参数与音效参考库启用状态
+node workspace/.agents/skills/pixelfx-studio/scripts/studio.mjs status
+
+# 从内置库克隆特效到工作区并重命名
+node workspace/.agents/skills/pixelfx-studio/scripts/studio.mjs fork ice/frost-nova ice/frost-nova-ex --name "极寒新星"
+
+# 运行像素规范诊断与生成分帧审阅联系表
+node workspace/.agents/skills/pixelfx-studio/scripts/studio.mjs check ice/frost-nova-ex
+node workspace/.agents/skills/pixelfx-studio/scripts/studio.mjs snapshot ice/frost-nova-ex
+
+# 编译指定特效的纯 JS 配音脚本并实时刷新前端音效变种下拉框
+node workspace/.agents/skills/pixelfx-studio/scripts/studio.mjs build-sfx magic/lightning-strike --select default
+
+# 动态管理可选音效参考库 (也可直接在 Web 界面弹窗中操作)
+node workspace/.agents/skills/pixelfx-studio/scripts/studio.mjs refs
+node workspace/.agents/skills/pixelfx-studio/scripts/studio.mjs refs add-dir ./my-audio-pack --name "自定义参考包"
+node workspace/.agents/skills/pixelfx-studio/scripts/studio.mjs refs disable
+
+# 命令行直接导出透明序列帧图集 (PNG + Aseprite JSON)
+node tools/render.mjs magic/lightning-strike --sheet
+```
+
+---
+
+## 代码集成示例（浏览器 Canvas / Web 游戏引擎）
+
+除了导出透明 PNG 图集外，也可在 Web 游戏中零依赖直接运行特效代码：
+
+```js
+import { createFrame, clearFrame, createFx, composite } from "pixelfx";
+import * as frostNova from "pixelfx/fx/ice/frost-nova";
+
+const frame = createFrame(320, 180);
+const img = new ImageData(320, 180);
+const fx = createFx(frostNova, { x: 160, y: 140 });
+
+function tick(dt) {
+  fx.update(dt);
+  clearFrame(frame);
+  fx.draw(frame);
+  composite(frame, img.data, null);
+  ctx.putImageData(img, 0, 0);
+}
+```
+
+---
+
+## 内置特效分类一览
+
+完整特效清单见 [docs/CATALOG.md](docs/CATALOG.md)。
 
 <!-- catalog -->
 | category | effects | some of them |
@@ -53,171 +153,9 @@ the idea at library scale, with a skill to keep going.
 | **critters** | 12 | bat, bird, butterfly, eyeball, fish school, flying skull… |
 <!-- /catalog -->
 
-Every effect is a file in `src/fx/<category>/<name>.js`. The [catalog](docs/CATALOG.md) lists them all.
+---
 
-## use one.
+## 开源协议与致谢 (License & Credits)
 
-**In a browser game** (canvas, Phaser, PixiJS, Kaplay, three.js), use the code. No dependencies.
-
-```js
-import { createFrame, clearFrame, createFx, composite } from "pixelfx";
-import * as frostNova from "pixelfx/fx/ice/frost-nova";
-
-const frame = createFrame(320, 180);                   // your game's pixel resolution
-const img = new ImageData(320, 180);
-const fx = createFx(frostNova, { x: 160, y: 140 });   // also: flip, angle, seed, palette, light...
-
-function tick(dt) {
-  fx.update(dt);
-  clearFrame(frame);
-  fx.draw(frame, "back");                              // behind characters
-  drawCharacters();
-  fx.draw(frame, "front");
-  composite(frame, img.data, backgroundColor);         // color, then light added on top
-  ctx.putImageData(img, 0, 0);                         // scale up with image-rendering: pixelated
-}
-```
-
-Install from GitHub with `npm i github:patch-gg/pixelfx`, or copy `src/core` and the effects you want.
-
-**In any engine** (Godot, Unity, GameMaker, Defold, LÖVE, Bevy), use sprite sheets:
-
-```bash
-node tools/render.mjs ice/frost-nova --sheet
-```
-
-That writes a transparent PNG of every frame in a grid and an Aseprite-style JSON (frame rects, durations, and
-`meta.pixelfx` with fps, loop, columns and the pivot). Phaser's atlas loader and the Aseprite importers for Godot
-and Unity read it. `node tools/sheets.mjs` exports the whole library to `sheets/`.
-
-Any effect takes a `palette` (a dark-to-bright ramp of hex colors), so a fire can burn blue and a heal can glow
-pink without touching its code:
-
-```bash
-node tools/render.mjs fire/torch --gif --opts '{"palette": ["#102","#215","#43a","#8cf","#cff","#fff"]}'
-```
-
-## acting.
-
-<p align="center">
-  <img src="docs/readme/acts.gif" width="800" alt="A grey dummy fighting a straw target: a three-stroke sword combo, a hammer smash, a ground pound, a holy smite, a frost nova and a run with after-images, each with a wind-up, a freeze on contact and a recovery.">
-</p>
-
-An effect on its own looks like a sticker. What sells a hit is the body around it: the wind-up that says something is
-coming, the freeze on contact, the target rocking back, the recovery. So the 61 effects with a character, and the 12
-moves, say what the body does and when:
-
-```js
-export const act = {
-  target: { x: 58 },
-  poses: [
-    [-0.55, GUARD],            // he starts before the effect does (t = 0 is the effect's first frame)
-    [-0.3, WIND_UP],
-    [0, CUT, "snap"],          // "snap" holds the last pose and jumps on the key
-    [0.06, FOLLOW_THROUGH, "snap"],
-    [0.86, GUARD],
-  ],
-  hits: [{ t: 0.06, stop: 0.14, shake: 0.18, amp: 2, push: 2.8, straw: 18 }],   // freeze for 0.14 s on contact
-};
-```
-
-**Play the whole thing**, character and target included, by swapping `createFx` for `createAct`:
-
-```js
-import { createFrame, clearFrame, createAct, composite } from "pixelfx";
-import * as slash from "pixelfx/fx/melee/sword-slash";
-
-const act = createAct(slash, { x: 80, y: 140 });
-
-function tick(dt) {
-  act.update(dt);                                  // holds still by itself during a freeze
-  clearFrame(frame);
-  act.draw(frame);                                 // { body: false } and { target: false } leave them out
-  composite(frame, img.data, backgroundColor);
-  const [sx, sy] = act.shake;                      // throw the picture this far
-  ctx.putImageData(img, sx, sy);
-}
-```
-
-**Got your own character?** Effect ids haven't changed and a sprite sheet is still the effect alone, so existing games
-keep working. (Effects drawn on the body paint the stock dummy, so regenerate those if you ship them.) The timing is plain data: read `slash.act`, or `meta.pixelfx.act` in a sprite sheet's
-JSON (`windup`, `recovery`, `hits` with `t` and `freeze`, `poses`). Start your own wind-up animation that long before the effect, and
-stop updating everything for `freeze` seconds at each hit.
-
-Effects drawn on the body (frost, poison, a scan line) are written against the standing character and follow him
-wherever he goes: each pixel of a pose knows which pixel of the standing body it came from. `node tools/act.mjs
-<id> --sheet` bakes a whole act, character included, into a sprite sheet.
-
-The body is yours to use too: `skeleton(pose)` gives you every joint of a pose in 3D, to hang your own things on, and
-`posedParts(pose)` gives you each part drawn on its own.
-
-## the skill.
-
-The `pixelfx` skill teaches Claude Code to find, use, export and make effects. Install it as a plugin:
-
-```
-/plugin marketplace add patch-gg/pixelfx
-/plugin install pixelfx@pixelfx
-```
-
-or copy `skills/pixelfx` into `~/.claude/skills/`. Then ask for what you want:
-
-- "Add a frost nova to my mage's ultimate."
-- "Make five takes on a coin pickup sparkle and show me the best two."
-- "Export the fire and explosions categories as sprite sheets for Godot."
-- "This hit effect feels floaty. Make it punchier."
-- "Give this spell a wind-up and make the enemy react to it."
-
-## make your own.
-
-```bash
-node tools/new.mjs arcane/my-spell       # a working starting point (add --loop for a loop)
-node tools/render.mjs arcane/my-spell    # records/arcane/my-spell/contact.png: look at it
-node tools/check.mjs arcane/my-spell     # spills, seams, unseeded randomness, slow frames
-```
-
-Then go round: look at the contact sheet, fix the worst thing, render again. `--gif` and `--mp4` show the motion,
-`--all` shows every frame. `node tools/act.mjs arcane/my-spell` shows an act as consecutive 12 fps steps, because motion
-bugs don't show in samples. [docs/AUTHORING.md](docs/AUTHORING.md) has the contract, the drawing API and the quality
-bar. `node tools/serve.mjs` runs the gallery locally with your effects in it.
-
-## publish it on patch.
-
-Made a browser game with these? Put it on [Patch](https://patch.gg), where people play and remix browser games and
-mods. Install `pch`, Patch's command line, then restart your coding agent and ask it to publish the game: the install
-gives every agent on your PC Patch's tools. Or run it yourself:
-
-```bash
-npm i -g @patchgg/cli      # or: curl -fsSL https://patch.gg/install.sh | sh
-pch login
-pch init                   # in your game's folder; it says what's next
-pch publish
-```
-
-Publishing needs [Patch Desktop](https://docs.patch.gg/get-started) open on a Windows PC: it plays your game once to
-test it before it goes live. The [quickstart](https://docs.patch.gg/quickstart) has the rest.
-
-## how it works.
-
-- **Two kinds of effect, no images.** Pure effects export `draw(p, t, o)`, the frame at `t` seconds from `t` alone, so
-  loops tile with no seam. Simulated effects export `create(o)` and step real particles, debris and lights at 120 Hz,
-  so sparks bounce and smoke rolls the same at any frame rate.
-- **Two buffers.** `color` takes pixels: opaque, dithered or truly translucent. `light` takes additive glow, added on
-  top. Hot things look hot because of the light buffer.
-- **Seeded everything.** Every random number comes from the effect's seed, so frame 40 is the same every time.
-- **Local space.** Effects draw around their own origin; the painter places, mirrors and rotates them. Directional
-  effects face right. A 24×38 stock character stands in for status effects, auras and hits.
-- **A real skeleton, drawn down to pixels.** The grey dummy is neutral on purpose, so the eye goes to the move and any effect's
-  colors read on it. He's a 3D skeleton with fixed-length bones, pelvis to spine to shoulders, rendered in a few flat tones with one clean
-  ink line, the way Dead Cells makes its sprites. So he can twist, bend and really turn round, and depth decides what's in front. Poses hold on 12 fps
-  steps, the way hand-drawn sprites do, while particles run at full rate.
-- **Same frame shape as Sprite Fusion's VFX** (`{ w, h, ox, oy, color, light }`), so both libraries can draw into
-  one frame.
-
-## license.
-
-MIT, code and effects. Use them in anything, commercial included. Parts are adapted from Hugo Duprez's MIT effects
-and from Hollow Crown's MIT source, and the Patch Pixel font in `gallery/fonts` is Patch's own and not covered: see
-[NOTICE.md](NOTICE.md).
-
-Made by [Patch](https://patch.gg).
+本项目基于 **MIT License** 开源（详见 [LICENSE](LICENSE) 与 [NOTICE.md](NOTICE.md)）。
+底层像素渲染核心与内置 244 个基础特效源自 [patch-gg/pixelfx](https://github.com/patch-gg/pixelfx)（灵感与部分特效源自 Hugo Duprez / Sprite Fusion 的 MIT 开源像素特效实践）。

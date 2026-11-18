@@ -1,5 +1,31 @@
+# Dependencies & build artifacts
 node_modules/
 dist/
 records/
 sheets/
+
+# OS & editor files
 .DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Secrets & local environment (never track credentials)
+.env
+.env.*
+!.env.example
+.agent-config.json
+**/.agent-config*
+*.secret
+*.secret.*
+
+# Workspace: ignore all local creations (fx/, sfx/, workspace.json),
+# runtime state, undo history, auto-generated shims, and SFX reference libraries;
+# track ONLY the read-only AI Harness entry & .agents skills/rules.
+workspace/*
+!workspace/AGENTS.md
+!workspace/.agents/

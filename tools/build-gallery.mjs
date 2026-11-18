@@ -15,6 +15,7 @@ mkdirSync(PAGE, { recursive: true });
 
 await build({ entryPoints: [join(G, "app.js")], bundle: true, format: "esm", minify: true, outfile: join(OUT, "app.js"), legalComments: "none" });
 cpSync(join(G, "fonts"), join(OUT, "fonts"), { recursive: true });
+cpSync(join(ROOT, "src", "fx"), join(OUT, "src", "fx"), { recursive: true });
 writeFileSync(join(OUT, "style.css"), readFileSync(join(G, "style.css")));
 writeFileSync(join(OUT, "index.html"), readFileSync(join(G, "index.html")));
 
