@@ -3334,7 +3334,7 @@ function initControls() {
           : isStaticBrowserMode()
             ? "填写 API Key（仅加密存于你自己的浏览器本地）..."
             : "填写 API Key（加密存于 ~/.pixelfx/ 仓库外部）...";
-        $("#cfg-key-status").textContent = c.hasKey
+        const baseStatus = c.hasKey
           ? c.keySource === "env"
             ? `✓ 已从环境变量读取 (${c.apiKeyMasked})`
             : c.keySource === "browser"
@@ -3343,6 +3343,10 @@ function initControls() {
           : isStaticBrowserMode()
             ? "尚未填写密钥（将直接从你的浏览器请求模型接口）"
             : "尚未配置密钥（也可通过环境变量 PIXELFX_API_KEY 注入）";
+        const isHttpOnHttps = location.protocol === "https:" && String(c.baseUrl || "").startsWith("http://");
+        $("#cfg-key-status").textContent = isHttpOnHttps
+          ? `${baseStatus} · ⚠ HTTP 地址需在浏览器网站设置允许不安全内容`
+          : baseStatus;
         const clrBtn = $("#btn-cfg-clear");
         if (clrBtn) clrBtn.hidden = !(c.hasKey && c.keySource !== "env");
       }
@@ -3380,12 +3384,16 @@ function initControls() {
     });
     const data = await resp.json();
     if (data.ok) {
+      const savedUrl = String(data.config?.baseUrl || $("#inp-cfg-url").value || "");
+      const warnHttp = location.protocol === "https:" && savedUrl.startsWith("http://");
       $("#inp-cfg-key").value = "";
       $("#dlg-agent-cfg").close();
       showToast(
-        isStaticBrowserMode()
-          ? "AI 密钥已脱敏保存在当前浏览器本地，可直接生成特效与配音"
-          : "AI 密钥已加密保存在仓库外 (~/.pixelfx/)，不会进入 Git",
+        warnHttp
+          ? "⚠ 配置已保存（提示：HTTPS 页面调用 http:// 接口时，请在浏览器地址栏网站设置中允许「不安全内容」）"
+          : isStaticBrowserMode()
+            ? "AI 密钥已脱敏保存在当前浏览器本地，可直接生成特效与配音"
+            : "AI 密钥已加密保存在仓库外 (~/.pixelfx/)，不会进入 Git",
       );
     }
   });

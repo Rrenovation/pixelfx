@@ -1354,9 +1354,6 @@ async function callBrowserLLM(cfg, systemPrompt, userMessage, historyMsgs = []) 
   if (!cfg.apiKey && !isLocal) {
     throw new Error("尚未配置大模型 API Key，请先点击右上角「配置 API Key」填写密钥。");
   }
-  if (location.protocol === "https:" && cfg.baseUrl.startsWith("http://") && !isLocal) {
-    throw new Error("浏览器安全限制 (Mixed Content)：当前页面为 HTTPS (GitHub Pages)，浏览器禁止直接请求非加密的 http:// 接口地址。请改用 https:// 模型网关（如 DeepSeek / OpenRouter / Gemini 官方地址），或在本地运行 npm start 使用内网 HTTP 接口。");
-  }
 
   const cleanHistory = Array.isArray(historyMsgs)
     ? historyMsgs.filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim()).slice(-10)
@@ -1436,7 +1433,11 @@ async function callBrowserLLM(cfg, systemPrompt, userMessage, historyMsgs = []) 
   } catch (err) {
     const msg = String(err?.message || err);
     if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) {
-      throw new Error("浏览器跨域 (CORS) 或网络请求被拦截：目标接口未开放浏览器跨域头 (Access-Control-Allow-Origin) 或地址不可达。建议使用支持浏览器直连的 HTTPS 接口（如 DeepSeek / OpenRouter / Gemini），或在本地运行 npm start 通过本地服务调用。");
+      const httpNote =
+        location.protocol === "https:" && cfg.baseUrl.startsWith("http://")
+          ? "若正在使用 http:// 地址，可在浏览器地址栏左侧「网站设置 -> 不安全内容」中设为「允许」，并确认接口开启了 CORS。"
+          : "请确认目标接口已开启浏览器跨域头 (Access-Control-Allow-Origin) 且网络可达。";
+      throw new Error(`网络请求未送达（浏览器拦截或连接失败）：${httpNote}`);
     }
     throw new Error(redactSensitiveText(msg, cfg));
   }
