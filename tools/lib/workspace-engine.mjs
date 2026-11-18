@@ -1009,6 +1009,11 @@ function scanBalancedJsonObjects(text) {
 function parseProviderHttpBody(rawBody, provider) {
   const trimmed = rawBody.trim();
   if (!trimmed) return "";
+  if (trimmed.startsWith("<")) {
+    const titleMatch = trimmed.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    const hint = titleMatch ? titleMatch[1].trim() : trimmed.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 100);
+    throw new Error(`模型接口返回了 HTML 页面 (${hint}) 而非 JSON，请检查 API Base URL 是否正确（OpenAI 兼容接口通常以 /v1 结尾）。`);
+  }
 
   // 1. 标准单 JSON 响应
   try {

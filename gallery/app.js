@@ -33,6 +33,10 @@ import {
   buildGifBlob,
   downloadBlob,
 } from "./export-utils.js";
+import {
+  initBrowserBackendIfNeeded,
+  isStaticBrowserMode,
+} from "./browser-backend.js";
 
 const STORAGE_CUSTOM_KEY = "pixelfx_custom_meta_v1";
 const $ = (s, root = document) => root.querySelector(s);
@@ -180,7 +184,7 @@ async function loadWorkspaceEffectsFromServer() {
         continue;
       }
       try {
-        const modUrl = `/workspace/fx/${item.id}.js?v=${item.mtimeMs}_${Date.now()}`;
+        const modUrl = item.moduleUrl || `/workspace/fx/${item.id}.js?v=${item.mtimeMs}_${Date.now()}`;
         const mod = await import(modUrl);
         const meta = {
           fps: 30,
@@ -1538,8 +1542,10 @@ async function reloadWorkspaceAndRefresh(targetId, keepView = true) {
 function connectLiveSSE() {
   const badge = $("#sync-badge");
   const txt = $("#sync-text");
-  if (location.hostname.endsWith(".github.io")) {
-    txt.textContent = "STATIC PREVIEW";
+  if (isStaticBrowserMode()) {
+    badge.classList.add("online");
+    txt.textContent = "BROWSER MODE";
+    badge.title = "纯浏览器无服务工作区已启用：支持克隆特效、在线改码、自定义 API Key 直连生成与 .ogg 配音（持久保存在本机浏览器 IndexedDB）";
     return;
   }
   let es;
@@ -3325,12 +3331,18 @@ function initControls() {
         $("#inp-cfg-key").value = "";
         $("#inp-cfg-key").placeholder = c.hasKey
           ? `已脱敏保护 (${c.apiKeyMasked})，留空保持不变`
-          : "填写 API Key（加密存于 ~/.pixelfx/ 仓库外部）...";
+          : isStaticBrowserMode()
+            ? "填写 API Key（仅加密存于你自己的浏览器本地）..."
+            : "填写 API Key（加密存于 ~/.pixelfx/ 仓库外部）...";
         $("#cfg-key-status").textContent = c.hasKey
           ? c.keySource === "env"
             ? `✓ 已从环境变量读取 (${c.apiKeyMasked})`
-            : `✓ 仓外加密已配置 (${c.apiKeyMasked})`
-          : "尚未配置密钥（也可通过环境变量 PIXELFX_API_KEY 注入）";
+            : c.keySource === "browser"
+              ? `✓ 已保存在当前浏览器本地 (${c.apiKeyMasked})`
+              : `✓ 仓外加密已配置 (${c.apiKeyMasked})`
+          : isStaticBrowserMode()
+            ? "尚未填写密钥（将直接从你的浏览器请求模型接口）"
+            : "尚未配置密钥（也可通过环境变量 PIXELFX_API_KEY 注入）";
         const clrBtn = $("#btn-cfg-clear");
         if (clrBtn) clrBtn.hidden = !(c.hasKey && c.keySource !== "env");
       }
@@ -3370,7 +3382,11 @@ function initControls() {
     if (data.ok) {
       $("#inp-cfg-key").value = "";
       $("#dlg-agent-cfg").close();
-      showToast("AI 密钥已加密保存在仓库外 (~/.pixelfx/)，不会进入 Git");
+      showToast(
+        isStaticBrowserMode()
+          ? "AI 密钥已脱敏保存在当前浏览器本地，可直接生成特效与配音"
+          : "AI 密钥已加密保存在仓库外 (~/.pixelfx/)，不会进入 Git",
+      );
     }
   });
 
@@ -3428,7 +3444,11 @@ function loop(now) {
 
 // ---- 应用启动 ----
 async function boot() {
+  const staticMode = await initBrowserBackendIfNeeded();
   initControls();
+  if (staticMode) {
+    $("#tab-amode-api")?.click();
+  }
   try {
     const res = await fetch("/api/custom-meta", { cache: "no-store" });
     if (res.ok) {
